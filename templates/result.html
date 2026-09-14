@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#000000">
+  <title>Результат</title>
+  <style>
+    * { box-sizing: border-box; }
+    html, body { height: 100%; margin: 0; }
+    body {
+      background: #000; color: #fff;
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      display: flex; align-items: center; justify-content: center;
+      padding: env(safe-area-inset-top) env(safe-area-inset-right)
+               env(safe-area-inset-bottom) env(safe-area-inset-left);
+      -webkit-text-size-adjust: 100%;
+    }
+    .wrap { width: 100%; max-width: 520px; padding: 24px 20px; text-align: center; }
+    h1 { font-size: clamp(20px, 5vw, 26px); font-weight: 600; margin: 0 0 20px; }
+
+    ul { list-style: none; padding: 0; margin: 0 0 20px; display: flex; flex-direction: column; gap: 10px; }
+
+    a.file {
+      display: block;
+      padding: 14px 16px;
+      background: #fff; color: #000;
+      border-radius: 10px;
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 15px;
+      word-break: break-word;
+      min-height: 48px;
+      line-height: 1.3;
+    }
+    a.file:hover { opacity: .85; }
+    a.file:active { opacity: .7; }
+
+    button#download-all {
+      width: 100%;
+      min-height: 48px;
+      background: #1a1a1a;
+      color: #fff;
+      border: 1px solid #333;
+      border-radius: 10px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      margin-bottom: 12px;
+      transition: background .15s, opacity .15s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    button#download-all:hover:not(:disabled) { background: #262626; }
+    button#download-all:active:not(:disabled) { opacity: .75; }
+    button#download-all:disabled { opacity: .55; cursor: default; }
+
+    a.back {
+      display: inline-block;
+      color: #888;
+      text-decoration: none;
+      font-size: 14px;
+      padding: 10px 14px;
+    }
+    a.back:hover { color: #ccc; }
+
+    .hint { color: #666; font-size: 12px; margin: 4px 0 0; }
+        button#delete-all {
+      width: 100%;
+      min-height: 48px;
+      background: transparent;
+      color: #fc8181;
+      border: 1px solid #4a1f1f;
+      border-radius: 10px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      margin-top: 8px;
+      transition: background .15s, border-color .15s, opacity .15s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    button#delete-all:hover { background: #1a0a0a; border-color: #6b2b2b; }
+    button#delete-all:active { opacity: .75; }
+
+    form { margin: 0; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Готово — {{ files|length }} файл(ов)</h1>
+
+    <ul>
+      {% for name in files %}
+        <li>
+          <a class="file"
+             href="{{ url_for('download', job_id=job_id, filename=name) }}"
+             download="{{ name }}">
+            {{ name }}
+          </a>
+        </li>
+      {% endfor %}
+    </ul>
+
+    <button id="download-all" type="button">
+      Скачать все ({{ files|length }})
+    </button>
+    <p class="hint">Браузер может спросить разрешение на несколько загрузок — разрешите.</p>
+
+    <form method="post"
+          action="{{ url_for('delete_result', job_id=job_id) }}"
+          onsubmit="return confirm('Удалить все результаты? Действие необратимо.');">
+      <button type="submit" id="delete-all">Удалить результат</button>
+    </form>
+
+    <a class="back" href="{{ url_for('index') }}">← Загрузить ещё один файл</a>
+  </div>
+
+  <script>
+    (function () {
+      const btn = document.getElementById('download-all');
+      const links = Array.from(document.querySelectorAll('a.file'));
+
+      btn.addEventListener('click', async () => {
+        if (!links.length || btn.disabled) return;
+
+        const original = btn.textContent;
+        btn.disabled = true;
+
+        for (let i = 0; i < links.length; i++) {
+          btn.textContent = `Скачивание ${i + 1} / ${links.length}…`;
+
+          // создаём временный якорь с download-атрибутом — надёжнее, чем клик по ссылке в разметке
+          const a = document.createElement('a');
+          a.href = links[i].href;
+          a.download = links[i].getAttribute('download') || '';
+          a.rel = 'noopener';
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+
+          // пауза, чтобы браузер успел обработать загрузку и не «съел» следующую
+          await new Promise(r => setTimeout(r, 500));
+        }
+
+        btn.textContent = original;
+        btn.disabled = false;
+      });
+    })();
+  </script>
+</body>
+</html>
